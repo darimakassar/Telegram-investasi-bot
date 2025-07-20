@@ -1,0 +1,9 @@
+# requirements.txt
+gspread
+oauth2client-contrib
+requests
+Flask
+pandas
+matplotlib
+numpy
+gunicorn
