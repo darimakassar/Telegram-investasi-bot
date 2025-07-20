@@ -20,7 +20,7 @@ import numpy as np
 # --- GANTI DENGAN INFORMASI ANDA ---
 NAMA_SPREADSHEET = os.environ.get("NAMA_SPREADSHEET")
 TELEGRAM_TOKEN = os.environ.get ("TELEGRAM_TOKEN")
-TTELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 # ------------------------------------
 
 # Inisialisasi Flask App
