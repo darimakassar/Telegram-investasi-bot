@@ -1,6 +1,6 @@
 # requirements.txt
 gspread
-oauth2client-contrib
+oauth2client
 requests
 Flask
 pandas
