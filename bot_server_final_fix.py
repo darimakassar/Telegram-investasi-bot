@@ -272,7 +272,6 @@ def webhook():
             incoming_chat_id = data['message']['chat']['id']
             message_body = data['message']['text'].lower()
             
-            # Pemeriksaan Keamanan
             if incoming_chat_id != AUTHORIZED_USER_ID:
                 print(f"Akses ditolak untuk user ID: {incoming_chat_id}")
                 send_telegram_message(incoming_chat_id, "Maaf, Anda tidak diizinkan menggunakan bot ini.")
@@ -280,7 +279,6 @@ def webhook():
 
             print(f"Pesan dari: {incoming_chat_id} | Isi: {message_body}")
 
-            # Logika Perintah 'dca'
             if message_body.startswith('dca'):
                 parts = message_body.split()
                 if len(parts) == 2 and parts[1].isdigit():
@@ -289,6 +287,11 @@ def webhook():
                     
                     harga_btc_usd = get_btc_price_from_binance()
                     kurs_usd_idr = get_usd_to_idr_rate()
+                    
+                    if harga_btc_usd is None or kurs_usd_idr is None:
+                        send_telegram_message(incoming_chat_id, "Maaf, gagal mengambil data harga saat ini. Coba lagi nanti.")
+                        return Response(status=200)
+
                     harga_final_btc_idr = harga_btc_usd * kurs_usd_idr
                     jumlah_btc_didapat = jumlah_dca / harga_final_btc_idr
                     
@@ -315,7 +318,6 @@ def webhook():
                 else:
                     send_telegram_message(incoming_chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
             
-            # Logika Perintah 'grafik'
             elif message_body == 'grafik':
                 send_telegram_message(incoming_chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
                 
@@ -327,15 +329,14 @@ def webhook():
                     keuntungan_persen = chart_data['keuntungan_persen']
                     
                     if keuntungan_rp >= 0:
-                        summary_text = f"📈 *Ringkasan Profit*\n*Saat ini Anda mengalami keuntungan sebesar* *Rp {keuntungan_rp:,.0f}* ({keuntungan_persen:.2f}%)."
+                        summary_text = f"📈 *Ringkasan Profit*\nSaat ini Anda mengalami keuntungan sebesar *Rp {keuntungan_rp:,.0f}* ({keuntungan_persen:.2f}%)."
                     else:
-                        summary_text = f"📉 *Ringkasan Kerugian*\n*Saat ini Anda mengalami kerugian sebesar* *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
+                        summary_text = f"📉 *Ringkasan Kerugian*\nSaat ini Anda mengalami kerugian sebesar *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
                     
                     send_telegram_message(incoming_chat_id, summary_text)
                 else:
                     send_telegram_message(incoming_chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
 
-            # Logika Perintah 'status'
             elif message_body == 'status':
                 history = get_detailed_history()
                 if history:
@@ -359,7 +360,6 @@ def webhook():
                 else:
                     send_telegram_message(incoming_chat_id, "Gagal mengambil riwayat detil portofolio.")
 
-            # Logika Perintah 'alert'
             elif message_body.startswith('alert'):
                 parts = message_body.split()
                 if len(parts) == 4 and parts[1] == 'btc' and parts[2] in ['>', '<']:
