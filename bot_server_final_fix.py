@@ -104,7 +104,7 @@ def get_portfolio_status():
     
     except Exception as e:
         print(f"Gagal mengambil status portofolio: {e}")
-        return "Gagal mengambil data status portofolio.
+        return "Gagal mengambil data status portofolio."
         
 def create_and_save_chart():
     """Membaca data, menghitung statistik, dan membuat dasbor grafik canggih."""
