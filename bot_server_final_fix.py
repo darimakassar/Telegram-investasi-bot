@@ -299,9 +299,9 @@ def webhook():
                     keuntungan_persen = chart_data['keuntungan_persen']
                     
                     if keuntungan_rp >= 0:
-                        summary_text = f"📈 *Ringkasan Profit*\nSaat ini Anda mengalami keuntungan sebesar *Rp {keuntungan_rp:,.0f}* ({keuntungan_persen:.2f}%)."
+                        summary_text = f"📈 *Ringkasan Profit*\n*Saat ini Anda mengalami keuntungan sebesar* *Rp {keuntungan_rp:,.0f}* ({keuntungan_persen:.2f}%)."
                     else:
-                        summary_text = f"📉 *Ringkasan Kerugian*\nSaat ini Anda mengalami kerugian sebesar *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
+                        summary_text = f"📉 *Ringkasan Kerugian*\n*Saat ini Anda mengalami kerugian sebesar* *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
                     
                     send_telegram_message(incoming_chat_id, summary_text)
                 # ----------------------------------------------------
