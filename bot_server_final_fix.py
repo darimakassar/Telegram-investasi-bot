@@ -236,21 +236,24 @@ def send_telegram_photo(chat_id, photo_path, caption=""):
 def webhook():
     data = request.get_json()
     try:
-        # 1. Ekstrak informasi penting dari data Telegram
         if 'message' in data and 'text' in data['message']:
-            chat_id = data['message']['chat']['id']
+            incoming_chat_id = data['message']['chat']['id']
             message_body = data['message']['text'].lower()
+            
+            # --- PERUBAHAN BARU: Pemeriksaan Keamanan ---
+            if incoming_chat_id != AUTHORIZED_USER_ID:
+                print(f"Akses ditolak untuk user ID: {incoming_chat_id}")
+                send_telegram_message(incoming_chat_id, "Maaf, Anda tidak diizinkan menggunakan bot ini.")
+                return Response(status=200) # Hentikan proses lebih lanjut
 
-            print(f"Pesan dari: {chat_id} | Isi: {message_body}")
+            print(f"Pesan dari: {incoming_chat_id} | Isi: {message_body}")
 
-            # 2. Logika Perintah (SAMA SEPERTI SEBELUMNYA, HANYA BEDA FUNGSI PENGIRIMAN)
             if message_body.startswith('dca'):
                 parts = message_body.split()
                 if len(parts) == 2 and parts[1].isdigit():
                     jumlah_dca = int(parts[1])
-                    send_telegram_message(chat_id, f"Memproses permintaan DCA sebesar Rp {jumlah_dca:,.0f}...")
-
-                    # --- Proses dan catat DCA (logika ini tidak berubah) ---
+                    send_telegram_message(incoming_chat_id, f"Memproses permintaan DCA sebesar Rp {jumlah_dca:,.0f}...")
+                    
                     harga_btc_usd = get_btc_price_from_binance()
                     kurs_usd_idr = get_usd_to_idr_rate()
                     harga_final_btc_idr = harga_btc_usd * kurs_usd_idr
@@ -260,7 +263,6 @@ def webhook():
                     tanggal_hari_ini = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     sheet.append_row([tanggal_hari_ini, jumlah_dca, harga_final_btc_idr, jumlah_btc_didapat])
                     
-                    # ... (logika perhitungan keuntungan tetap sama) ...
                     all_btc_values = sheet.col_values(4) 
                     total_btc_owned = sum([float(str(i).replace(',', '.')) for i in all_btc_values[1:]])
                     all_modal_values = sheet.col_values(2)
@@ -269,36 +271,34 @@ def webhook():
                     keuntungan_rp = nilai_aset - total_modal
                     keuntungan_persen = (keuntungan_rp / total_modal) * 100 if total_modal > 0 else 0
                     
-                    # --- Kirim Jawaban Teks (menggunakan fungsi Telegram) ---
                     balasan_sukses = (
                         f"✅ *Sukses!* Deposit DCA telah dicatat.\n\n"
                         f"Jumlah: Rp {jumlah_dca:,.2f}\n"
                         f"Harga BTC: Rp {harga_final_btc_idr:,.2f}\n"
-                        f"BTC Didapat: `{jumlah_btc_didapat:.8f}` BTC\n\n" # Gunakan `...` untuk format monospaced di Telegram
+                        f"BTC Didapat: `{jumlah_btc_didapat:.8f}` BTC\n\n"
                         f"Total Aset Anda: *{total_btc_owned:.8f} BTC*\n"
                         f"*Akumulasi Riwayat Keuntungan Anda: Rp {keuntungan_rp:,.2f} ({keuntungan_persen:.1f}%)*"
                     )
-                    send_telegram_message(chat_id, balasan_sukses)
+                    send_telegram_message(incoming_chat_id, balasan_sukses)
 
-                    # --- Kirim Jawaban Grafik (menggunakan fungsi Telegram) ---
-                    send_telegram_message(chat_id, "Membuat dasbor grafik terbaru...")
+                    send_telegram_message(incoming_chat_id, "Membuat dasbor grafik terbaru...")
                     chart_file = create_and_save_chart()
                     if chart_file:
-                        send_telegram_photo(chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
+                        send_telegram_photo(incoming_chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
                     else:
-                        send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
+                        send_telegram_message(incoming_chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
                 else:
-                    send_telegram_message(chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
+                    send_telegram_message(incoming_chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
             
             elif message_body == 'grafik':
-                send_telegram_message(chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
+                send_telegram_message(incoming_chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
                 chart_file = create_and_save_chart()
                 if chart_file:
-                    send_telegram_photo(chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
+                    send_telegram_photo(incoming_chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
                 else:
-                    send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
+                    send_telegram_message(incoming_chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
             else:
-                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]' atau 'grafik'.")
+                send_telegram_message(incoming_chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]' atau 'grafik'.")
 
     except Exception as e:
         print(f"Error memproses pesan. Laporan Eror Lengkap:")
