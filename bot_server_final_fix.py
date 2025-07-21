@@ -42,26 +42,26 @@ def setup_google_sheets():
     return sheet
 
 def get_btc_price_from_binance():
-    """Mengambil harga BTC/USDT terkini dari Binance."""
+    """Mengambil harga BTC/USDT terkini dari Binance dengan penanganan error lebih baik."""
     url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
     try:
-        # Menambahkan timeout untuk mencegah skrip hang jika tidak ada respons
         response = requests.get(url, timeout=10)
-        # Memeriksa apakah permintaan berhasil (kode status 2xx)
-        response.raise_for_status()
-        data = response.json()
-        
-        # Memeriksa apakah kunci 'price' ada sebelum mengaksesnya
-        if 'price' in data:
-            return float(data['price'])
-        else:
-            print(f"Eror: Kunci 'price' tidak ditemukan dalam respons Binance. Respons aktual: {data}")
-            return None # Mengembalikan None untuk menandakan kegagalan
 
-    except (requests.exceptions.RequestException, ValueError) as e:
-        # Menangkap eror jaringan, timeout (RequestException), atau jika data tidak bisa diubah ke float (ValueError)
-        print(f"Gagal mengambil atau memproses harga dari Binance. Eror: {e}")
-        return None # Mengembalikan None untuk menandakan kegagalan
+        response.raise_for_status()
+
+        if 'price' in response.json():
+            return float(response.json()['price'])
+        else:
+            print("Eror: Kunci 'price' tidak ditemukan dalam respons Binance.")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        if e.response and e.response.status_code == 418:
+            print("Error 418: Permintaan terlalu banyak, coba lagi setelah beberapa detik.")
+            time.sleep(5)  
+            return get_btc_price_from_binance()  
+        print(f"Gagal mengambil harga dari Binance. Error: {e}")
+        return None
 
 def get_usd_to_idr_rate():
     """Mengambil kurs USD ke IDR."""
