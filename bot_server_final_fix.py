@@ -69,6 +69,43 @@ def get_usd_to_idr_rate():
     response = requests.get(url)
     return float(response.json()['rates']['IDR'])
 
+def get_portfolio_status():
+    """Mengambil status portofolio dari Google Sheets."""
+    try:
+        sheet = setup_google_sheets()
+        values = sheet.get_all_values()
+        header = values[0]
+        data = values[1:]
+        
+        # Membaca data untuk membuat format yang diinginkan
+        portfolio_status = []
+        harga_btc_idr_saat_ini = get_btc_price_from_binance() * get_usd_to_idr_rate()
+        
+        for row in data:
+            tanggal = row[0]
+            modal_deposit = float(row[1])
+            jumlah_btc_didapat = float(row[3])
+            nilai_kini = jumlah_btc_didapat * harga_btc_idr_saat_ini
+            keuntungan = nilai_kini - modal_deposit
+            keuntungan_persen = (keuntungan / modal_deposit) * 100 if modal_deposit > 0 else 0
+            
+            # Menambahkan status portfolio ke dalam list
+            status = "📈" if keuntungan >= 0 else "📉"
+            keuntungan_str = f"Untung Rp {keuntungan:,.0f} ({keuntungan_persen:.2f}%)" if keuntungan >= 0 else f"Kerugian Rp {abs(keuntungan):,.0f} ({keuntungan_persen:.2f}%)"
+            
+            portfolio_status.append(f"*Tanggal: {tanggal}*\n"
+                                    f"Deposit: `Rp {modal_deposit:,.0f}`\n"
+                                    f"BTC Dibeli: `{jumlah_btc_didapat:.8f}`\n"
+                                    f"Nilai Kini: `Rp {nilai_kini:,.0f}`\n"
+                                    f"Status: {status} {keuntungan_str}\n")
+        
+        # Menggabungkan semua riwayat status
+        return "\n--------------------\n".join(portfolio_status)
+    
+    except Exception as e:
+        print(f"Gagal mengambil status portofolio: {e}")
+        return "Gagal mengambil data status portofolio.
+        
 def create_and_save_chart():
     """Membaca data, menghitung statistik, dan membuat dasbor grafik canggih."""
     try:
@@ -306,8 +343,15 @@ def webhook():
                     send_telegram_message(chat_id, summary_text)
                 else:
                     send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
+            
+            # Perintah "status" untuk melihat riwayat portofolio
+            elif message_body == 'status':
+                send_telegram_message(chat_id, "Mengambil riwayat portofolio...")
+                portfolio_status = get_portfolio_status()
+                send_telegram_message(chat_id, f"📊 *Riwayat Detil Portofolio Anda*\n\n{portfolio_status}")
+            
             else:
-                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]' atau 'grafik'.")
+                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', atau 'status'.")
 
     except Exception as e:
         print(f"Error memproses pesan. Laporan Eror Lengkap:")
