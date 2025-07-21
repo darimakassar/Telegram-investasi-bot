@@ -101,16 +101,14 @@ def create_and_save_chart():
         keuntungan_rp = final_nilai_aset - final_modal
         keuntungan_persen = (keuntungan_rp / final_modal) * 100 if final_modal > 0 else 0
 
-        # --- TATA LETAK GRAFIK FINAL DENGAN DUA SUB-PLOT ---
         plt.style.use('dark_background')
         fig, (ax_text, ax_chart) = plt.subplots(
             nrows=2, ncols=1, figsize=(9, 16), facecolor='#121212', 
-            gridspec_kw={'height_ratios': [1, 3]} # Alokasi ruang: 1 bagian untuk teks, 3 untuk grafik
+            gridspec_kw={'height_ratios': [1, 4]}
         )
         fig.patch.set_edgecolor('white')
         fig.patch.set_linewidth(4)
         
-        # --- Pengaturan Area Teks (Dasbor Atas) ---
         ax_text.set_facecolor('#121212')
         for spine in ['top', 'right', 'left', 'bottom']: ax_text.spines[spine].set_visible(False)
         ax_text.tick_params(axis='both', which='both', length=0)
@@ -126,8 +124,8 @@ def create_and_save_chart():
 
         ax_text.text(0.05, 0.6, 'Modal Investasi', color='grey', fontsize=15, ha='left')
         ax_text.text(0.05, 0.45, f'Rp {final_modal:,.0f}', color=warna_modal_investasi, fontsize=18, fontweight='bold', ha='left') 
-        ax_text.text(0.05, 0.15, 'Total Aset Dibeli', color='grey', fontsize=12, ha='left')
-        ax_text.text(0.05, 0.0, f'{final_total_btc:.8f} BTC', color='white', fontsize=14, ha='left')
+        ax_text.text(0.05, 0.25, 'Total Aset Dibeli', color='grey', fontsize=12, ha='left')
+        ax_text.text(0.05, 0.1, f'{final_total_btc:.8f} BTC', color='white', fontsize=14, ha='left')
 
         ax_text.text(0.95, 0.6, 'Nilai Investasi', color='white', fontsize=15, ha='right')
         ax_text.text(0.95, 0.45, f'Rp {final_nilai_aset:,.0f}', color=warna_nilai_investasi, fontsize=18, fontweight='bold', ha='right') 
@@ -138,30 +136,21 @@ def create_and_save_chart():
         ax_text.text(0.95, 0.15, profit_text_label, color=profit_color, fontsize=12, ha='right')
         ax_text.text(0.95, 0.0, f'{profit_arrow} {keuntungan_persen:.1f}%', color=profit_color, fontsize=16, ha='right')
 
-        # --- Pengaturan Area Grafik (Bawah) ---
         ax_chart.set_facecolor('#121212')
-
-        # Plot nilai asli tanpa normalisasi
-        ax_chart.plot(df['Tanggal'], df['Nilai Aset (IDR)'], color=warna_nilai_investasi, linewidth=2.5, marker='o', markersize=5, zorder=10)
-
-        start_date, end_date = df['Tanggal'].iloc[0], df['Tanggal'].iloc[-1]
-        start_modal, end_modal = df['Total Modal (IDR)'].iloc[0], df['Total Modal (IDR)'].iloc[-1]
-        ax_chart.plot([start_date, end_date], [start_modal, end_modal], color=warna_modal_investasi, linewidth=1.5, marker='o', markersize=5, alpha=0.4)
-
-        # Sesuaikan ylim untuk fit kedua plot
-        data_min = min(df['Nilai Aset (IDR)'].min(), df['Total Modal (IDR)'].min())
-        data_max = max(df['Nilai Aset (IDR)'].max(), df['Total Modal (IDR)'].max())
+        
+        data_min = min(df['Total Modal (IDR)'].min(), df['Nilai Aset (IDR)'].min())
+        data_max = max(df['Total Modal (IDR)'].max(), df['Nilai Aset (IDR)'].max())
         data_range = data_max - data_min
         if data_range == 0: data_range = data_max
-        padding_main = data_range * 0.2 
-        y_axis_bottom = data_min - padding_main
-        padding_between_charts = data_range * 0.05 
-        profit_chart_base = data_max + padding_between_charts
-        profit_chart_height = data_range * 0.2 
-        y_axis_top = profit_chart_base + profit_chart_height
-        ax_chart.set_ylim(y_axis_bottom, y_axis_top)
+        df['Nilai_Aset_Plot'] = (df['Nilai Aset (IDR)'] - data_min) / data_range
+        start_modal_norm = (df['Total Modal (IDR)'].iloc[0] - data_min) / data_range
+        end_modal_norm = (df['Total Modal (IDR)'].iloc[-1] - data_min) / data_range
 
-        # Logika grafik profit (tetap)
+        ax_chart.plot(df['Tanggal'], df['Nilai_Aset_Plot'], color=warna_nilai_investasi, linewidth=2.5, marker='o', markersize=5, zorder=10)
+        ax_chart.plot([df['Tanggal'].iloc[0], df['Tanggal'].iloc[-1]], [start_modal_norm, end_modal_norm], color=warna_modal_investasi, linewidth=1.5, marker='o', markersize=5, alpha=0.4)
+
+        profit_chart_base = 1.05
+        profit_chart_height = 0.25
         profit_min, profit_max = df['Keuntungan (%)'].min(), df['Keuntungan (%)'].max()
         profit_range = profit_max - profit_min
         if profit_range == 0: profit_range = 1
@@ -170,16 +159,14 @@ def create_and_save_chart():
         zero_pct_pos = (((0 - profit_min) / profit_range) * profit_chart_height) + profit_chart_base
         ax_chart.axhline(y=zero_pct_pos, color='white', linestyle='--', linewidth=1, alpha=0.3)
 
-        # Menambahkan label tanggal pada kedua plot
         last_label_date = None
         for index, row in df.iterrows():
             current_date_str = row['Tanggal'].strftime('%d/%m')
             if index == 0 or index == len(df) - 1 or current_date_str != last_label_date:
-                ax_chart.text(row['Tanggal'], row['Nilai Aset (IDR)'], f" {current_date_str}", fontsize=8, fontweight='bold', color=warna_nilai_investasi, ha='left', va='bottom')
+                ax_chart.text(row['Tanggal'], row['Nilai_Aset_Plot'], f" {current_date_str}", fontsize=8, fontweight='bold', color=warna_nilai_investasi, ha='left', va='bottom')
                 ax_chart.text(row['Tanggal'], row['Profit_Plot_Y'], f" {current_date_str}", fontsize=7, color=profit_color, ha='left', va='bottom', fontweight='bold')
                 last_label_date = current_date_str
-
-        # Menghilangkan semua sumbu dan label dari area grafik
+        
         for spine in ['top', 'right', 'left', 'bottom']: ax_chart.spines[spine].set_visible(False)
         ax_chart.tick_params(axis='both', which='both', length=0)
         ax_chart.set_xticklabels([])
@@ -192,7 +179,15 @@ def create_and_save_chart():
         plt.close()
         
         print(f"Grafik berhasil disimpan sebagai {chart_filename}")
-        return chart_filename
+        
+        # --- PERUBAHAN DI SINI: Mengembalikan data statistik ---
+        stats = {
+            "filename": chart_filename,
+            "keuntungan_rp": keuntungan_rp,
+            "keuntungan_persen": keuntungan_persen
+        }
+        return stats
+        # ----------------------------------------------------
     except Exception as e:
         print(f"Gagal membuat grafik. Laporan Eror Lengkap:")
         traceback.print_exc()
@@ -290,12 +285,27 @@ def webhook():
                     send_telegram_message(chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
             
             elif message_body == 'grafik':
-                send_telegram_message(chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
-                chart_file = create_and_save_chart()
-                if chart_file:
-                    send_telegram_photo(chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
+                send_telegram_message(incoming_chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
+                
+                # --- PERUBAHAN DI SINI: Menangkap data statistik ---
+                chart_data = create_and_save_chart()
+                if chart_data:
+                    # Kirim foto terlebih dahulu
+                    send_telegram_photo(incoming_chat_id, chart_data['filename'], caption="Berikut dasbor investasi Anda.")
+                    
+                    # Buat dan kirim pesan ringkasan
+                    keuntungan_rp = chart_data['keuntungan_rp']
+                    keuntungan_persen = chart_data['keuntungan_persen']
+                    
+                    if keuntungan_rp >= 0:
+                        summary_text = f"📈 *Ringkasan Profit*\nSaat ini Anda mengalami keuntungan sebesar *Rp {keuntungan_rp:,.0f}* ({keuntungan_persen:.2f}%)."
+                    else:
+                        summary_text = f"📉 *Ringkasan Kerugian*\nSaat ini Anda mengalami kerugian sebesar *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
+                    
+                    send_telegram_message(incoming_chat_id, summary_text)
+                # ----------------------------------------------------
                 else:
-                    send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
+                    send_telegram_message(incoming_chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
             else:
                 send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]' atau 'grafik'.")
 
