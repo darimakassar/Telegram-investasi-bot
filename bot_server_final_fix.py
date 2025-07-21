@@ -17,10 +17,10 @@ import numpy as np
 # BAGIAN 1: PENGATURAN & KREDENSIAL
 # ==============================================================================
 
+# --- GANTI DENGAN INFORMASI ANDA ---
 NAMA_SPREADSHEET = os.environ.get("NAMA_SPREADSHEET")
 TELEGRAM_TOKEN = os.environ.get ("TELEGRAM_TOKEN")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-AUTHORIZED_USER_ID = int(os.environ.get("AUTHORIZED_USER_ID"))
+TTELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 # ------------------------------------
 
 # Inisialisasi Flask App
@@ -30,80 +30,43 @@ app = Flask(__name__)
 # BAGIAN 2: FUNGSI-FUNGSI LOGIKA
 # ==============================================================================
 
-def setup_google_sheets(sheet_name):
+def setup_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/spreadsheets',
              "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
     google_creds_json_str = os.environ.get('GOOGLE_CREDENTIALS_JSON')
     creds_dict = json.loads(google_creds_json_str)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
-    sheet = client.open(NAMA_SPREADSHEET).worksheet(sheet_name)
+    sheet = client.open(NAMA_SPREADSHEET).sheet1
     return sheet
 
 def get_btc_price_from_binance():
     """Mengambil harga BTC/USDT terkini dari Binance."""
     url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
     try:
-        response = requests.get(url, timeout=10)
+        # Menambahkan timeout untuk mencegah skrip hang jika tidak ada respons
+        response = requests.get(url, verify=False, timeout=10)
+        # Memeriksa apakah permintaan berhasil (kode status 2xx)
         response.raise_for_status()
         data = response.json()
+        
+        # Memeriksa apakah kunci 'price' ada sebelum mengaksesnya
         if 'price' in data:
             return float(data['price'])
         else:
-            return None
+            print(f"Eror: Kunci 'price' tidak ditemukan dalam respons Binance. Respons aktual: {data}")
+            return None # Mengembalikan None untuk menandakan kegagalan
+
     except (requests.exceptions.RequestException, ValueError) as e:
+        # Menangkap eror jaringan, timeout (RequestException), atau jika data tidak bisa diubah ke float (ValueError)
         print(f"Gagal mengambil atau memproses harga dari Binance. Eror: {e}")
-        return None
+        return None # Mengembalikan None untuk menandakan kegagalan
 
 def get_usd_to_idr_rate():
     """Mengambil kurs USD ke IDR."""
     url = "https://api.exchangerate-api.com/v4/latest/USD"
-    response = requests.get(url, timeout=10)
+    response = requests.get(url, verify=False)
     return float(response.json()['rates']['IDR'])
-    
-def get_detailed_history():
-    """Membaca GSheet, mengambil harga terkini, dan menghitung statistik per baris."""
-    try:
-        sheet = setup_google_sheets("Tabel Master")
-        
-        # --- PERUBAHAN UTAMA: Membaca data berdasarkan posisi, bukan nama header ---
-        values = sheet.get_all_values()
-        data_rows = values[1:] # Lewati baris header
-        
-        harga_btc_usd = get_btc_price_from_binance()
-        kurs_usd_idr = get_usd_to_idr_rate()
-        
-        if not data_rows or harga_btc_usd is None or kurs_usd_idr is None:
-            return None
-
-        harga_final_btc_idr = harga_btc_usd * kurs_usd_idr
-        
-        history_details = []
-        for row in data_rows:
-            # Mengakses data berdasarkan indeks kolom (A=0, B=1, C=2, D=3)
-            tanggal_str = row[0]
-            modal = float(row[1])
-            btc_didapat = float(str(row[3]).replace(',', '.')) # Kolom D
-            
-            tanggal = datetime.datetime.strptime(tanggal_str, "%Y-%m-%d %H:%M:%S")
-            
-            nilai_kini = btc_didapat * harga_final_btc_idr
-            keuntungan_rp = nilai_kini - modal
-            keuntungan_persen = (keuntungan_rp / modal) * 100 if modal > 0 else 0
-            
-            history_details.append({
-                "tanggal": tanggal.strftime("%d/%m/%Y"),
-                "modal": modal,
-                "btc_didapat": btc_didapat,
-                "nilai_kini": nilai_kini,
-                "keuntungan_rp": keuntungan_rp,
-                "keuntungan_persen": keuntungan_persen
-            })
-        return history_details
-    except Exception as e:
-        print(f"Error di get_detailed_history: {e}")
-        traceback.print_exc()
-        return None
 
 def create_and_save_chart():
     """Membaca data, menghitung statistik, dan membuat dasbor grafik canggih."""
@@ -138,14 +101,16 @@ def create_and_save_chart():
         keuntungan_rp = final_nilai_aset - final_modal
         keuntungan_persen = (keuntungan_rp / final_modal) * 100 if final_modal > 0 else 0
 
+        # --- TATA LETAK GRAFIK FINAL DENGAN DUA SUB-PLOT ---
         plt.style.use('dark_background')
         fig, (ax_text, ax_chart) = plt.subplots(
             nrows=2, ncols=1, figsize=(9, 16), facecolor='#121212', 
-            gridspec_kw={'height_ratios': [1, 4]}
+            gridspec_kw={'height_ratios': [1, 3]} # Alokasi ruang: 1 bagian untuk teks, 3 untuk grafik
         )
         fig.patch.set_edgecolor('white')
         fig.patch.set_linewidth(4)
         
+        # --- Pengaturan Area Teks (Dasbor Atas) ---
         ax_text.set_facecolor('#121212')
         for spine in ['top', 'right', 'left', 'bottom']: ax_text.spines[spine].set_visible(False)
         ax_text.tick_params(axis='both', which='both', length=0)
@@ -161,8 +126,8 @@ def create_and_save_chart():
 
         ax_text.text(0.05, 0.6, 'Modal Investasi', color='grey', fontsize=15, ha='left')
         ax_text.text(0.05, 0.45, f'Rp {final_modal:,.0f}', color=warna_modal_investasi, fontsize=18, fontweight='bold', ha='left') 
-        ax_text.text(0.05, 0.25, 'Total Aset Dibeli', color='grey', fontsize=12, ha='left')
-        ax_text.text(0.05, 0.1, f'{final_total_btc:.8f} BTC', color='white', fontsize=14, ha='left')
+        ax_text.text(0.05, 0.15, 'Total Aset Dibeli', color='grey', fontsize=12, ha='left')
+        ax_text.text(0.05, 0.0, f'{final_total_btc:.8f} BTC', color='white', fontsize=14, ha='left')
 
         ax_text.text(0.95, 0.6, 'Nilai Investasi', color='white', fontsize=15, ha='right')
         ax_text.text(0.95, 0.45, f'Rp {final_nilai_aset:,.0f}', color=warna_nilai_investasi, fontsize=18, fontweight='bold', ha='right') 
@@ -173,21 +138,30 @@ def create_and_save_chart():
         ax_text.text(0.95, 0.15, profit_text_label, color=profit_color, fontsize=12, ha='right')
         ax_text.text(0.95, 0.0, f'{profit_arrow} {keuntungan_persen:.1f}%', color=profit_color, fontsize=16, ha='right')
 
+        # --- Pengaturan Area Grafik (Bawah) ---
         ax_chart.set_facecolor('#121212')
-        
-        data_min = min(df['Total Modal (IDR)'].min(), df['Nilai Aset (IDR)'].min())
-        data_max = max(df['Total Modal (IDR)'].max(), df['Nilai Aset (IDR)'].max())
+
+        # Plot nilai asli tanpa normalisasi
+        ax_chart.plot(df['Tanggal'], df['Nilai Aset (IDR)'], color=warna_nilai_investasi, linewidth=2.5, marker='o', markersize=5, zorder=10)
+
+        start_date, end_date = df['Tanggal'].iloc[0], df['Tanggal'].iloc[-1]
+        start_modal, end_modal = df['Total Modal (IDR)'].iloc[0], df['Total Modal (IDR)'].iloc[-1]
+        ax_chart.plot([start_date, end_date], [start_modal, end_modal], color=warna_modal_investasi, linewidth=1.5, marker='o', markersize=5, alpha=0.4)
+
+        # Sesuaikan ylim untuk fit kedua plot
+        data_min = min(df['Nilai Aset (IDR)'].min(), df['Total Modal (IDR)'].min())
+        data_max = max(df['Nilai Aset (IDR)'].max(), df['Total Modal (IDR)'].max())
         data_range = data_max - data_min
         if data_range == 0: data_range = data_max
-        df['Nilai_Aset_Plot'] = (df['Nilai Aset (IDR)'] - data_min) / data_range
-        start_modal_norm = (df['Total Modal (IDR)'].iloc[0] - data_min) / data_range
-        end_modal_norm = (df['Total Modal (IDR)'].iloc[-1] - data_min) / data_range
+        padding_main = data_range * 0.2 
+        y_axis_bottom = data_min - padding_main
+        padding_between_charts = data_range * 0.05 
+        profit_chart_base = data_max + padding_between_charts
+        profit_chart_height = data_range * 0.2 
+        y_axis_top = profit_chart_base + profit_chart_height
+        ax_chart.set_ylim(y_axis_bottom, y_axis_top)
 
-        ax_chart.plot(df['Tanggal'], df['Nilai_Aset_Plot'], color=warna_nilai_investasi, linewidth=2.5, marker='o', markersize=5, zorder=10)
-        ax_chart.plot([df['Tanggal'].iloc[0], df['Tanggal'].iloc[-1]], [start_modal_norm, end_modal_norm], color=warna_modal_investasi, linewidth=1.5, marker='o', markersize=5, alpha=0.4)
-
-        profit_chart_base = 1.05
-        profit_chart_height = 0.25
+        # Logika grafik profit (tetap)
         profit_min, profit_max = df['Keuntungan (%)'].min(), df['Keuntungan (%)'].max()
         profit_range = profit_max - profit_min
         if profit_range == 0: profit_range = 1
@@ -196,14 +170,16 @@ def create_and_save_chart():
         zero_pct_pos = (((0 - profit_min) / profit_range) * profit_chart_height) + profit_chart_base
         ax_chart.axhline(y=zero_pct_pos, color='white', linestyle='--', linewidth=1, alpha=0.3)
 
+        # Menambahkan label tanggal pada kedua plot
         last_label_date = None
         for index, row in df.iterrows():
             current_date_str = row['Tanggal'].strftime('%d/%m')
             if index == 0 or index == len(df) - 1 or current_date_str != last_label_date:
-                ax_chart.text(row['Tanggal'], row['Nilai_Aset_Plot'], f" {current_date_str}", fontsize=8, fontweight='bold', color=warna_nilai_investasi, ha='left', va='bottom')
+                ax_chart.text(row['Tanggal'], row['Nilai Aset (IDR)'], f" {current_date_str}", fontsize=8, fontweight='bold', color=warna_nilai_investasi, ha='left', va='bottom')
                 ax_chart.text(row['Tanggal'], row['Profit_Plot_Y'], f" {current_date_str}", fontsize=7, color=profit_color, ha='left', va='bottom', fontweight='bold')
                 last_label_date = current_date_str
-        
+
+        # Menghilangkan semua sumbu dan label dari area grafik
         for spine in ['top', 'right', 'left', 'bottom']: ax_chart.spines[spine].set_visible(False)
         ax_chart.tick_params(axis='both', which='both', length=0)
         ax_chart.set_xticklabels([])
@@ -216,15 +192,7 @@ def create_and_save_chart():
         plt.close()
         
         print(f"Grafik berhasil disimpan sebagai {chart_filename}")
-        
-        # --- PERUBAHAN DI SINI: Mengembalikan data statistik ---
-        stats = {
-            "filename": chart_filename,
-            "keuntungan_rp": keuntungan_rp,
-            "keuntungan_persen": keuntungan_persen
-        }
-        return stats
-        # ----------------------------------------------------
+        return chart_filename
     except Exception as e:
         print(f"Gagal membuat grafik. Laporan Eror Lengkap:")
         traceback.print_exc()
@@ -267,117 +235,69 @@ def send_telegram_photo(chat_id, photo_path, caption=""):
 def webhook():
     data = request.get_json()
     try:
+        # 1. Ekstrak informasi penting dari data Telegram
         if 'message' in data and 'text' in data['message']:
-            incoming_chat_id = data['message']['chat']['id']
+            chat_id = data['message']['chat']['id']
             message_body = data['message']['text'].lower()
-            
-            if incoming_chat_id != AUTHORIZED_USER_ID:
-                print(f"Akses ditolak untuk user ID: {incoming_chat_id}")
-                send_telegram_message(incoming_chat_id, "Maaf, Anda tidak diizinkan menggunakan bot ini.")
-                return Response(status=200)
 
-            print(f"Pesan dari: {incoming_chat_id} | Isi: {message_body}")
+            print(f"Pesan dari: {chat_id} | Isi: {message_body}")
 
+            # 2. Logika Perintah (SAMA SEPERTI SEBELUMNYA, HANYA BEDA FUNGSI PENGIRIMAN)
             if message_body.startswith('dca'):
                 parts = message_body.split()
                 if len(parts) == 2 and parts[1].isdigit():
                     jumlah_dca = int(parts[1])
-                    send_telegram_message(incoming_chat_id, f"Memproses permintaan DCA sebesar Rp {jumlah_dca:,.0f}...")
-                    
+                    send_telegram_message(chat_id, f"Memproses permintaan DCA sebesar Rp {jumlah_dca:,.0f}...")
+
+                    # --- Proses dan catat DCA (logika ini tidak berubah) ---
                     harga_btc_usd = get_btc_price_from_binance()
                     kurs_usd_idr = get_usd_to_idr_rate()
-                    
-                    if harga_btc_usd is None or kurs_usd_idr is None:
-                        send_telegram_message(incoming_chat_id, "Maaf, gagal mengambil data harga saat ini. Coba lagi nanti.")
-                        return Response(status=200)
-
                     harga_final_btc_idr = harga_btc_usd * kurs_usd_idr
                     jumlah_btc_didapat = jumlah_dca / harga_final_btc_idr
                     
-                    sheet = setup_google_sheets("Tabel Master")
+                    sheet = setup_google_sheets()
                     tanggal_hari_ini = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     sheet.append_row([tanggal_hari_ini, jumlah_dca, harga_final_btc_idr, jumlah_btc_didapat])
                     
+                    # ... (logika perhitungan keuntungan tetap sama) ...
                     all_btc_values = sheet.col_values(4) 
                     total_btc_owned = sum([float(str(i).replace(',', '.')) for i in all_btc_values[1:]])
+                    all_modal_values = sheet.col_values(2)
+                    total_modal = sum([float(str(i).replace(',', '.')) for i in all_modal_values[1:]])
+                    nilai_aset = total_btc_owned * harga_final_btc_idr
+                    keuntungan_rp = nilai_aset - total_modal
+                    keuntungan_persen = (keuntungan_rp / total_modal) * 100 if total_modal > 0 else 0
                     
+                    # --- Kirim Jawaban Teks (menggunakan fungsi Telegram) ---
                     balasan_sukses = (
                         f"✅ *Sukses!* Deposit DCA telah dicatat.\n\n"
                         f"Jumlah: Rp {jumlah_dca:,.2f}\n"
                         f"Harga BTC: Rp {harga_final_btc_idr:,.2f}\n"
-                        f"BTC Didapat: `{jumlah_btc_didapat:.8f}` BTC\n\n"
-                        f"Total Aset Anda: *{total_btc_owned:.8f} BTC*"
+                        f"BTC Didapat: `{jumlah_btc_didapat:.8f}` BTC\n\n" # Gunakan `...` untuk format monospaced di Telegram
+                        f"Total Aset Anda: *{total_btc_owned:.8f} BTC*\n"
+                        f"*Akumulasi Riwayat Keuntungan Anda: Rp {keuntungan_rp:,.2f} ({keuntungan_persen:.1f}%)*"
                     )
-                    send_telegram_message(incoming_chat_id, balasan_sukses)
+                    send_telegram_message(chat_id, balasan_sukses)
 
-                    send_telegram_message(incoming_chat_id, "Membuat dasbor grafik terbaru...")
-                    chart_data = create_and_save_chart()
-                    if chart_data:
-                        send_telegram_photo(incoming_chat_id, chart_data['filename'], caption="Berikut dasbor investasi Anda.")
+                    # --- Kirim Jawaban Grafik (menggunakan fungsi Telegram) ---
+                    send_telegram_message(chat_id, "Membuat dasbor grafik terbaru...")
+                    chart_file = create_and_save_chart()
+                    if chart_file:
+                        send_telegram_photo(chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
+                    else:
+                        send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
                 else:
-                    send_telegram_message(incoming_chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
+                    send_telegram_message(chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
             
             elif message_body == 'grafik':
-                send_telegram_message(incoming_chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
-                
-                chart_data = create_and_save_chart()
-                if chart_data:
-                    send_telegram_photo(incoming_chat_id, chart_data['filename'], caption="Berikut dasbor investasi Anda.")
-                    
-                    keuntungan_rp = chart_data['keuntungan_rp']
-                    keuntungan_persen = chart_data['keuntungan_persen']
-                    
-                    if keuntungan_rp >= 0:
-                        summary_text = f"📈 *Ringkasan Profit*\nSaat ini Anda mengalami keuntungan sebesar *Rp {keuntungan_rp:,.0f}* ({keuntungan_persen:.2f}%)."
-                    else:
-                        summary_text = f"📉 *Ringkasan Kerugian*\nSaat ini Anda mengalami kerugian sebesar *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
-                    
-                    send_telegram_message(incoming_chat_id, summary_text)
+                send_telegram_message(chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
+                chart_file = create_and_save_chart()
+                if chart_file:
+                    send_telegram_photo(chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
                 else:
-                    send_telegram_message(incoming_chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
-
-            elif message_body == 'status':
-                history = get_detailed_history()
-                if history:
-                    reply_message = "📊 *Riwayat Detil Portofolio Anda*\n\n"
-                    
-                    for trx in history:
-                        status_emoji = "📈" if trx['keuntungan_rp'] >= 0 else "📉"
-                        status_text = "Untung" if trx['keuntungan_rp'] >= 0 else "Rugi"
-                        
-                        trx_block = (
-                            f"--------------------\n"
-                            f"*{trx['tanggal']}*\n"
-                            f"Deposit: `Rp {trx['modal']:,.0f}`\n"
-                            f"BTC Dibeli: `{trx['btc_didapat']:.8f}`\n"
-                            f"Nilai Kini: `Rp {trx['nilai_kini']:,.0f}`\n"
-                            f"Status: {status_emoji} {status_text} Rp {abs(trx['keuntungan_rp']):,.0f} ({trx['keuntungan_persen']:.2f}%)"
-                        )
-                        reply_message += trx_block + "\n\n"
-                    
-                    send_telegram_message(incoming_chat_id, reply_message)
-                else:
-                    send_telegram_message(incoming_chat_id, "Gagal mengambil riwayat detil portofolio.")
-
-            elif message_body.startswith('alert'):
-                parts = message_body.split()
-                if len(parts) == 4 and parts[1] == 'btc' and parts[2] in ['>', '<']:
-                    try:
-                        target_price = int(parts[3])
-                        condition = parts[2]
-                        
-                        alert_sheet = setup_google_sheets("Alerts")
-                        alert_sheet.append_row([incoming_chat_id, 'btc', condition, target_price])
-                        
-                        kondisi_teks = "di atas" if condition == '>' else "di bawah"
-                        send_telegram_message(incoming_chat_id, f"🔔 *Alert Disimpan!* Saya akan memberitahu Anda jika harga BTC bergerak {kondisi_teks} Rp {target_price:,.0f}.")
-                    except ValueError:
-                        send_telegram_message(incoming_chat_id, "Format harga salah. Harap masukkan angka.")
-                else:
-                    send_telegram_message(incoming_chat_id, "Format perintah alert salah.\nGunakan: `alert btc [> atau <] [harga]`\nContoh: `alert btc > 2000000000`")
-
+                    send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
             else:
-                send_telegram_message(incoming_chat_id, "Perintah tidak dikenali. Gunakan `dca [jumlah]`, `grafik`, `status`, atau `alert`.")
+                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]' atau 'grafik'.")
 
     except Exception as e:
         print(f"Error memproses pesan. Laporan Eror Lengkap:")
