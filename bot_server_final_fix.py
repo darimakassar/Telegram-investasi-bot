@@ -47,8 +47,10 @@ def get_btc_price_from_binance():
     try:
         response = requests.get(url, timeout=10)
 
+        # Periksa apakah permintaan berhasil (kode status 2xx)
         response.raise_for_status()
 
+        # Memeriksa apakah kunci 'price' ada sebelum mengaksesnya
         if 'price' in response.json():
             return float(response.json()['price'])
         else:
@@ -58,16 +60,21 @@ def get_btc_price_from_binance():
     except requests.exceptions.RequestException as e:
         if e.response and e.response.status_code == 418:
             print("Error 418: Permintaan terlalu banyak, coba lagi setelah beberapa detik.")
-            time.sleep(5)  
-            return get_btc_price_from_binance()  
+            time.sleep(5)  # Menunggu 5 detik sebelum mencoba lagi
+            return get_btc_price_from_binance()  # Coba lagi
         print(f"Gagal mengambil harga dari Binance. Error: {e}")
         return None
 
 def get_usd_to_idr_rate():
     """Mengambil kurs USD ke IDR."""
     url = "https://api.exchangerate-api.com/v4/latest/USD"
-    response = requests.get(url)
-    return float(response.json()['rates']['IDR'])
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Memeriksa jika ada masalah dengan API
+        return float(response.json()['rates']['IDR'])
+    except requests.exceptions.RequestException as e:
+        print(f"Gagal mengambil kurs USD ke IDR. Error: {e}")
+        return None
 
 def get_portfolio_status():
     """Mengambil status portofolio dari Google Sheets."""
@@ -76,11 +83,14 @@ def get_portfolio_status():
         values = sheet.get_all_values()
         header = values[0]
         data = values[1:]
-        
+
         # Membaca data untuk membuat format yang diinginkan
         portfolio_status = []
         harga_btc_idr_saat_ini = get_btc_price_from_binance() * get_usd_to_idr_rate()
-        
+
+        if harga_btc_idr_saat_ini is None:
+            return "Gagal mengambil harga BTC atau kurs IDR. Silakan coba lagi."
+
         for row in data:
             tanggal = row[0]
             modal_deposit = float(row[1])
