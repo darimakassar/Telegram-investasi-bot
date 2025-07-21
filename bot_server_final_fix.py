@@ -183,7 +183,7 @@ def create_and_save_chart():
         
         # --- PERUBAHAN DI SINI: Mengembalikan data statistik ---
         stats = {
-            "filename": chart_filename,
+            "filename": chart_filename,  # Pastikan path file yang benar
             "keuntungan_rp": keuntungan_rp,
             "keuntungan_persen": keuntungan_persen
         }
@@ -277,22 +277,22 @@ def webhook():
 
                     # --- Kirim Jawaban Grafik (menggunakan fungsi Telegram) ---
                     send_telegram_message(chat_id, "Membuat dasbor grafik terbaru...")
-                    chart_file = create_and_save_chart()
-                    if chart_file:
-                        send_telegram_photo(chat_id, chart_file, caption="Berikut dasbor investasi Anda.")
+                    chart_data = create_and_save_chart()  # Pastikan menerima stats yang benar
+                    if chart_data:
+                        send_telegram_photo(chat_id, chart_data['filename'], caption="Berikut dasbor investasi Anda.")
                     else:
                         send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
                 else:
                     send_telegram_message(chat_id, "Format salah. Gunakan: dca [jumlah]\nContoh: dca 1000000")
             
             elif message_body == 'grafik':
-                send_telegram_message(incoming_chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
-                
+                send_telegram_message(chat_id, "Sedang membuat dasbor grafik Anda, mohon tunggu sebentar...")
+
                 # --- PERUBAHAN DI SINI: Menangkap data statistik ---
                 chart_data = create_and_save_chart()
                 if chart_data:
-                    # Kirim foto terlebih dahulu
-                    send_telegram_photo(chat_id, chart_file['filename'], caption="Berikut dasbor investasi Anda.")
+                    # Kirim foto terlebih dahulu, pastikan mengambil 'filename' dari chart_data
+                    send_telegram_photo(chat_id, chart_data['filename'], caption="Berikut dasbor investasi Anda.")
                     
                     # Buat dan kirim pesan ringkasan
                     keuntungan_rp = chart_data['keuntungan_rp']
@@ -303,10 +303,9 @@ def webhook():
                     else:
                         summary_text = f"📉 *Ringkasan Kerugian*\nSaat ini Anda mengalami kerugian sebesar *Rp {abs(keuntungan_rp):,.0f}* ({keuntungan_persen:.2f}%)."
                     
-                    send_telegram_message(incoming_chat_id, summary_text)
-                # ----------------------------------------------------
+                    send_telegram_message(chat_id, summary_text)
                 else:
-                    send_telegram_message(incoming_chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
+                    send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
             else:
                 send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]' atau 'grafik'.")
 
