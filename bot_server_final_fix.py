@@ -291,7 +291,7 @@ def webhook():
                 chart_data = create_and_save_chart()
                 if chart_data:
                     # Kirim foto terlebih dahulu
-                    send_telegram_photo(incoming_chat_id, chart_data['filename'], caption="Berikut dasbor investasi Anda.")
+                    send_telegram_photo(chat_id, chart_file['filename'], caption="Berikut dasbor investasi Anda.")
                     
                     # Buat dan kirim pesan ringkasan
                     keuntungan_rp = chart_data['keuntungan_rp']
