@@ -19,6 +19,7 @@ import numpy as np
 
 # --- GANTI DENGAN INFORMASI ANDA ---
 NAMA_SPREADSHEET = os.environ.get("NAMA_SPREADSHEET")
+AUTHORIZED_USER_ID = int(os.environ.get("AUTHORIZED_USER_ID"))
 TELEGRAM_TOKEN = os.environ.get ("TELEGRAM_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 # ------------------------------------
