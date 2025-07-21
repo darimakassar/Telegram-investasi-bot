@@ -44,23 +44,16 @@ def get_btc_price_from_binance():
     """Mengambil harga BTC/USDT terkini dari Binance."""
     url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
     try:
-        # Menambahkan timeout untuk mencegah skrip hang jika tidak ada respons
         response = requests.get(url, timeout=10)
-        # Memeriksa apakah permintaan berhasil (kode status 2xx)
         response.raise_for_status()
         data = response.json()
-        
-        # Memeriksa apakah kunci 'price' ada sebelum mengaksesnya
         if 'price' in data:
             return float(data['price'])
         else:
-            print(f"Eror: Kunci 'price' tidak ditemukan dalam respons Binance. Respons aktual: {data}")
-            return None # Mengembalikan None untuk menandakan kegagalan
-
+            return None
     except (requests.exceptions.RequestException, ValueError) as e:
-        # Menangkap eror jaringan, timeout (RequestException), atau jika data tidak bisa diubah ke float (ValueError)
         print(f"Gagal mengambil atau memproses harga dari Binance. Eror: {e}")
-        return None # Mengembalikan None untuk menandakan kegagalan
+        return None
 
 def get_usd_to_idr_rate():
     """Mengambil kurs USD ke IDR."""
@@ -72,21 +65,27 @@ def get_detailed_history():
     """Membaca GSheet, mengambil harga terkini, dan menghitung statistik per baris."""
     try:
         sheet = setup_google_sheets("Tabel Master")
-        records = sheet.get_all_records() # Mengambil data sebagai list of dictionaries
+        
+        # --- PERUBAHAN UTAMA: Membaca data berdasarkan posisi, bukan nama header ---
+        values = sheet.get_all_values()
+        data_rows = values[1:] # Lewati baris header
         
         harga_btc_usd = get_btc_price_from_binance()
         kurs_usd_idr = get_usd_to_idr_rate()
         
-        if not records or harga_btc_usd is None or kurs_usd_idr is None:
+        if not data_rows or harga_btc_usd is None or kurs_usd_idr is None:
             return None
 
         harga_final_btc_idr = harga_btc_usd * kurs_usd_idr
         
         history_details = []
-        for record in records:
-            modal = float(record['Modal Deposit (IDR)'])
-            btc_didapat = float(str(record['Jumlah BTC Didapat']).replace(',', '.'))
-            tanggal = datetime.datetime.strptime(record['Tanggal'], "%Y-%m-%d %H:%M:%S")
+        for row in data_rows:
+            # Mengakses data berdasarkan indeks kolom (A=0, B=1, C=2, D=3)
+            tanggal_str = row[0]
+            modal = float(row[1])
+            btc_didapat = float(str(row[3]).replace(',', '.')) # Kolom D
+            
+            tanggal = datetime.datetime.strptime(tanggal_str, "%Y-%m-%d %H:%M:%S")
             
             nilai_kini = btc_didapat * harga_final_btc_idr
             keuntungan_rp = nilai_kini - modal
