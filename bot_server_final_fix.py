@@ -45,7 +45,7 @@ def get_btc_price_from_binance():
     url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
     try:
         # Menambahkan timeout untuk mencegah skrip hang jika tidak ada respons
-        response = requests.get(url, verify=False, timeout=10)
+        response = requests.get(url, timeout=10)
         # Memeriksa apakah permintaan berhasil (kode status 2xx)
         response.raise_for_status()
         data = response.json()
@@ -65,7 +65,7 @@ def get_btc_price_from_binance():
 def get_usd_to_idr_rate():
     """Mengambil kurs USD ke IDR."""
     url = "https://api.exchangerate-api.com/v4/latest/USD"
-    response = requests.get(url, verify=False)
+    response = requests.get(url)
     return float(response.json()['rates']['IDR'])
 
 def create_and_save_chart():
