@@ -21,6 +21,7 @@ import numpy as np
 NAMA_SPREADSHEET = os.environ.get("NAMA_SPREADSHEET")
 TELEGRAM_TOKEN = os.environ.get ("TELEGRAM_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+AUTHORIZED_USER_ID = int(os.environ.get("AUTHORIZED_USER_ID"))
 # ------------------------------------
 
 # Inisialisasi Flask App
