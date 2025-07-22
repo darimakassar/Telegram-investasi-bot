@@ -247,7 +247,22 @@ def create_and_save_chart():
         print(f"Gagal membuat grafik. Laporan Eror Lengkap:")
         traceback.print_exc()
         return None
-
+def get_btc_volatility(days=30):
+    try:
+        url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit={days}"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        closes = [float(candle[4]) for candle in data]
+        if len(closes) < 2:
+            return None
+        returns = np.log(np.array(closes[1:]) / np.array(closes[:-1]))
+        vol = np.std(returns) * np.sqrt(365) * 100
+        return vol
+    except Exception as e:
+        print(f"Error getting volatility: {e}")
+        traceback.print_exc()
+        return None
 # ==============================================================================
 # BAGIAN 3: FUNGSI KOMUNIKASI TELEGRAM
 # ==============================================================================
@@ -394,8 +409,20 @@ def webhook():
                 status_message = get_portfolio_status()
                 send_telegram_message(chat_id, status_message)
             
+            elif message_body == 'cek volatilitas':
+                vol = get_btc_volatility()
+                if vol is None:
+                    send_telegram_message(chat_id, "Gagal menghitung volatilitas.")
+                else:
+                    threshold = 50  # Ubah sesuai kebutuhan
+                    if vol > threshold:
+                        msg = f"🚨 Alert! Volatilitas BTC tinggi: {vol:.2f}% (30 hari annualized)"
+                    else:
+                        msg = f"Volatilitas BTC: {vol:.2f}% (30 hari annualized)"
+                    send_telegram_message(chat_id, msg)
+            
             else:
-                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga'.")
+                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga', 'cek volatilitas'.")
 
     except Exception as e:
         print(f"Error memproses pesan. Laporan Eror Lengkap:")
