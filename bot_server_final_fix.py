@@ -23,6 +23,7 @@ NAMA_SPREADSHEET = os.environ.get("NAMA_SPREADSHEET")
 AUTHORIZED_USER_ID = int(os.environ.get("AUTHORIZED_USER_ID"))
 TELEGRAM_TOKEN = os.environ.get ("TELEGRAM_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 # ------------------------------------
 
 # Inisialisasi Flask App
@@ -261,8 +262,23 @@ def get_btc_volatility(days=30):
         return vol
     except Exception as e:
         print(f"Error getting volatility: {e}")
-        traceback.print_exc()
+
+def get_crypto_prediction_from_polygon(symbol='X:BTCUSD', days=30):
+    """Mengambil data harga historis dari Polygon.io untuk prediksi sederhana (misalnya, rata-rata atau tren)."""
+    url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{(datetime.date.today() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')}/{datetime.date.today().strftime('%Y-%m-%d')}?apiKey={POLYGON_API_KEY}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()['results']
+        closes = [d['c'] for d in data]
+        avg_price = sum(closes) / len(closes)
+        trend = "Naik" if closes[-1] > avg_price else "Turun"
+        return f"Prediksi tren BTC (berdasar {days} hari): {trend}. Harga rata-rata: ${avg_price:.2f}"
+    except Exception as e:
+        print(f"Error Polygon: {e}")
+         traceback.print_exc()
         return None
+
 # ==============================================================================
 # BAGIAN 3: FUNGSI KOMUNIKASI TELEGRAM
 # ==============================================================================
@@ -420,9 +436,15 @@ def webhook():
                     else:
                         msg = f"Volatilitas BTC: {vol:.2f}% (30 hari annualized). Volatilitas rendah ini relatif positif untuk stabilitas investasi jangka panjang, meski tetap ada risiko inheren di crypto."
                     send_telegram_message(chat_id, msg)
+            elif message_body == 'prediksi':
+                prediksi = get_crypto_prediction_from_polygon()
+                if prediksi:
+                    send_telegram_message(chat_id, prediksi)
+                else:
+                    send_telegram_message(chat_id, "Gagal mengambil prediksi dari Polygon.io.")
             
             else:
-                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga', 'cek volatilitas'.")
+                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', 'cek harga', 'cek volatilitas', atau 'prediksi'.")
 
     except Exception as e:
         print(f"Error memproses pesan. Laporan Eror Lengkap:")
