@@ -389,6 +389,10 @@ def webhook():
                         send_telegram_message(chat_id, f"🚨 Peringatan! Harga BTC mencapai target Rp {target:,}.\nSaat ini harga BTC: Rp {harga_btc_idr:,.0f}")
                 else:
                     send_telegram_message(chat_id, f"Harga BTC saat ini: Rp {harga_btc_idr:,.0f}\nBelum mencapai target apa pun.")
+                    
+            elif message_body == 'status':
+                status_message = get_portfolio_status()
+                    send_telegram_message(chat_id, status_message)
             
             else:
                 send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga'.")
