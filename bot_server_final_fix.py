@@ -363,18 +363,14 @@ def webhook():
             
             # Fitur tambahan untuk peringatan harga BTC
             elif message_body == 'cek harga':
-                harga_btc_usd = get_btc_price_from_binance()
+                harga_btc_usd = get_btc_price_from_binance()  # Inisialisasi di luar blok if
                 if harga_btc_usd is None:
                     send_telegram_message(chat_id, "Gagal mengambil harga BTC.")
                     return Response(status=200)
-
                 kurs_usd_idr = get_usd_to_idr_rate()
                 if kurs_usd_idr is None:
                     send_telegram_message(chat_id, "Gagal mengambil kurs IDR.")
                     return Response(status=200)
-            elif message_body == 'status':
-                send_telegram_message(chat_id, get_portfolio_status())
-
                 harga_btc_idr = harga_btc_usd * kurs_usd_idr
 
                 target_prices = [2000000000, 2500000000, 3000000000, 3500000000, 4000000000, 
@@ -386,7 +382,6 @@ def webhook():
                                  17000000000, 17500000000, 18000000000, 18500000000, 19000000000, 
                                  20000000000]
                 
-                # Periksa apakah harga BTC mencapai target
                 targets_reached = [target for target in target_prices if harga_btc_idr >= target]
                 
                 if targets_reached:
