@@ -436,6 +436,7 @@ def webhook():
                     else:
                         msg = f"Volatilitas BTC: {vol:.2f}% (30 hari annualized). Volatilitas rendah ini relatif positif untuk stabilitas investasi jangka panjang, meski tetap ada risiko inheren di crypto."
                     send_telegram_message(chat_id, msg)
+                    
             elif message_body == 'prediksi':
                 prediksi = get_crypto_prediction_from_polygon()
                 if prediksi:
