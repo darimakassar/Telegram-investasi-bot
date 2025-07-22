@@ -67,7 +67,7 @@ def get_btc_price_from_binance():
 
 def get_usd_to_idr_rate():
     """Mengambil kurs USD ke IDR."""
-    url = "https://api.exchangerate-api.com/v4/latest/USD"
+    url = "https://open.er-api.com/v6/latest/USD"
     try:
         response = requests.get(url)
         response.raise_for_status()  # Memeriksa jika ada masalah dengan API
@@ -85,10 +85,12 @@ def get_portfolio_status():
         data = values[1:]
 
         # Membaca data untuk membuat format yang diinginkan
-        portfolio_status = []
-        harga_btc_idr_saat_ini = get_btc_price_from_binance() * get_usd_to_idr_rate()
+        btc_price = get_btc_price_from_binance()
+        idr_rate = get_usd_to_idr_rate()
+        if btc_price is None or idr_rate is None:
+        return "Gagal mengambil harga BTC atau kurs IDR. Silakan coba lagi."
+        harga_btc_idr_saat_ini = btc_price * idr_rate
 
-        if harga_btc_idr_saat_ini is None:
             return "Gagal mengambil harga BTC atau kurs IDR. Silakan coba lagi."
 
         for row in data:
