@@ -248,6 +248,7 @@ def create_and_save_chart():
         print(f"Gagal membuat grafik. Laporan Eror Lengkap:")
         traceback.print_exc()
         return None
+
 def get_btc_volatility(days=30):
     try:
         url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit={days}"
@@ -262,6 +263,8 @@ def get_btc_volatility(days=30):
         return vol
     except Exception as e:
         print(f"Error getting volatility: {e}")
+        traceback.print_exc()
+        return None
 
 def get_crypto_prediction_from_polygon(symbol='X:BTCUSD', days=30):
     """Mengambil data harga historis dari Polygon.io untuk prediksi sederhana (misalnya, rata-rata atau tren)."""
@@ -276,7 +279,7 @@ def get_crypto_prediction_from_polygon(symbol='X:BTCUSD', days=30):
         return f"Prediksi tren BTC (berdasar {days} hari): {trend}. Harga rata-rata: ${avg_price:.2f}"
     except Exception as e:
         print(f"Error Polygon: {e}")
-         traceback.print_exc()
+        traceback.print_exc()
         return None
 
 # ==============================================================================
