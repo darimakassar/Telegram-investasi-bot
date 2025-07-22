@@ -94,21 +94,28 @@ def get_portfolio_status():
         for row in data:
             tanggal = row[0]
             modal_deposit = float(row[1])
-            jumlah_btc_didapat = float(row[3])
+            
+            # Penanganan kesalahan saat mengonversi 'Jumlah BTC Didapat' ke float
+            try:
+                jumlah_btc_didapat = float(row[3].replace(',', '.'))  # Mengganti koma dengan titik jika ada
+            except ValueError:
+                print(f"Error konversi nilai BTC: {row[3]}")
+                jumlah_btc_didapat = 0.0  # Set nilai ke 0 jika gagal konversi
+
             nilai_kini = jumlah_btc_didapat * harga_btc_idr_saat_ini
             keuntungan = nilai_kini - modal_deposit
             keuntungan_persen = (keuntungan / modal_deposit) * 100 if modal_deposit > 0 else 0
-            
+
             # Menambahkan status portfolio ke dalam list
             status = "📈" if keuntungan >= 0 else "📉"
             keuntungan_str = f"Untung Rp {keuntungan:,.0f} ({keuntungan_persen:.2f}%)" if keuntungan >= 0 else f"Kerugian Rp {abs(keuntungan):,.0f} ({keuntungan_persen:.2f}%)"
-            
+
             portfolio_status.append(f"*Tanggal: {tanggal}*\n"
                                     f"Deposit: `Rp {modal_deposit:,.0f}`\n"
                                     f"BTC Dibeli: `{jumlah_btc_didapat:.8f}`\n"
                                     f"Nilai Kini: `Rp {nilai_kini:,.0f}`\n"
                                     f"Status: {status} {keuntungan_str}\n")
-        
+
         # Menggabungkan semua riwayat status
         return "\n--------------------\n".join(portfolio_status)
     
