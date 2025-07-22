@@ -11,7 +11,8 @@ matplotlib.use('Agg') # Mengatur backend matplotlib agar non-interaktif
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import traceback
-import numpy as np 
+import numpy as np
+import time
 
 # ==============================================================================
 # BAGIAN 1: PENGATURAN & KREDENSIAL
@@ -77,39 +78,36 @@ def get_usd_to_idr_rate():
         return None
 
 def get_portfolio_status():
-    """Mengambil status portofolio dari Google Sheets."""
     try:
         sheet = setup_google_sheets()
         values = sheet.get_all_values()
         header = values[0]
         data = values[1:]
 
-        # Membaca data untuk membuat format yang diinginkan
         btc_price = get_btc_price_from_binance()
         idr_rate = get_usd_to_idr_rate()
         if btc_price is None or idr_rate is None:
-        return "Gagal mengambil harga BTC atau kurs IDR. Silakan coba lagi."
-        harga_btc_idr_saat_ini = btc_price * idr_rate
-
             return "Gagal mengambil harga BTC atau kurs IDR. Silakan coba lagi."
-
+        
+        harga_btc_idr_saat_ini = btc_price * idr_rate
+        
+        portfolio_status = []  # Tambah inisialisasi list
+        
         for row in data:
             tanggal = row[0]
             modal_deposit = float(row[1])
             
-            # Menangani konversi 'Jumlah BTC Didapat' yang menggunakan koma sebagai pemisah desimal
             try:
-                jumlah_btc_didapat = row[3].replace(',', '.')  # Mengganti koma dengan titik
+                jumlah_btc_didapat = row[3].replace(',', '.')
                 jumlah_btc_didapat = float(jumlah_btc_didapat)
             except ValueError:
                 print(f"Error konversi nilai BTC: {row[3]}")
-                jumlah_btc_didapat = 0.0  # Set nilai ke 0 jika gagal konversi
+                jumlah_btc_didapat = 0.0
 
             nilai_kini = jumlah_btc_didapat * harga_btc_idr_saat_ini
             keuntungan = nilai_kini - modal_deposit
             keuntungan_persen = (keuntungan / modal_deposit) * 100 if modal_deposit > 0 else 0
 
-            # Menambahkan status portfolio ke dalam list
             status = "📈" if keuntungan >= 0 else "📉"
             keuntungan_str = f"Untung Rp {keuntungan:,.0f} ({keuntungan_persen:.2f}%)" if keuntungan >= 0 else f"Kerugian Rp {abs(keuntungan):,.0f} ({keuntungan_persen:.2f}%)"
 
@@ -119,7 +117,6 @@ def get_portfolio_status():
                                     f"Nilai Kini: `Rp {nilai_kini:,.0f}`\n"
                                     f"Status: {status} {keuntungan_str}\n")
 
-        # Menggabungkan semua riwayat status
         return "\n--------------------\n".join(portfolio_status)
     
     except Exception as e:
@@ -375,6 +372,8 @@ def webhook():
                 if kurs_usd_idr is None:
                     send_telegram_message(chat_id, "Gagal mengambil kurs IDR.")
                     return Response(status=200)
+            elif message_body == 'status':
+                send_telegram_message(chat_id, get_portfolio_status())
 
                 harga_btc_idr = harga_btc_usd * kurs_usd_idr
 
