@@ -392,7 +392,7 @@ def webhook():
                     
             elif message_body == 'status':
                 status_message = get_portfolio_status()
-                    send_telegram_message(chat_id, status_message)
+                send_telegram_message(chat_id, status_message)
             
             else:
                 send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga'.")
