@@ -362,15 +362,20 @@ def webhook():
                 else:
                     send_telegram_message(chat_id, "Maaf, data investasi belum cukup untuk membuat grafik.")
             
-            # Perintah "status" untuk melihat riwayat portofolio
-            elif message_body == 'status':
-                send_telegram_message(chat_id, "Mengambil riwayat portofolio...")
-                portfolio_status = get_portfolio_status()
-                send_telegram_message(chat_id, f"📊 *Riwayat Detil Portofolio Anda*\n\n{portfolio_status}")
-            
             # Fitur tambahan untuk peringatan harga BTC
             elif message_body == 'cek harga':
-                harga_btc = get_btc_price_from_binance()
+                harga_btc_usd = get_btc_price_from_binance()
+                if harga_btc_usd is None:
+                    send_telegram_message(chat_id, "Gagal mengambil harga BTC.")
+                    return Response(status=200)
+
+                kurs_usd_idr = get_usd_to_idr_rate()
+                if kurs_usd_idr is None:
+                    send_telegram_message(chat_id, "Gagal mengambil kurs IDR.")
+                    return Response(status=200)
+
+                harga_btc_idr = harga_btc_usd * kurs_usd_idr
+
                 target_prices = [2000000000, 2500000000, 3000000000, 3500000000, 4000000000, 
                                  4500000000, 5000000000, 5500000000, 6000000000, 6500000000, 
                                  7000000000, 7500000000, 8000000000, 8500000000, 9000000000, 
@@ -381,9 +386,13 @@ def webhook():
                                  20000000000]
                 
                 # Periksa apakah harga BTC mencapai target
-                for target in target_prices:
-                    if harga_btc >= target:
-                        send_telegram_message(chat_id, f"🚨 Peringatan! Harga BTC mencapai target Rp {target:,}.\nSaat ini harga BTC: Rp {harga_btc:,.2f}")
+                targets_reached = [target for target in target_prices if harga_btc_idr >= target]
+                
+                if targets_reached:
+                    for target in targets_reached:
+                        send_telegram_message(chat_id, f"🚨 Peringatan! Harga BTC mencapai target Rp {target:,}.\nSaat ini harga BTC: Rp {harga_btc_idr:,.0f}")
+                else:
+                    send_telegram_message(chat_id, f"Harga BTC saat ini: Rp {harga_btc_idr:,.0f}\nBelum mencapai target apa pun.")
             
             else:
                 send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga'.")
