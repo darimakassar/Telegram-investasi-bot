@@ -368,8 +368,25 @@ def webhook():
                 portfolio_status = get_portfolio_status()
                 send_telegram_message(chat_id, f"📊 *Riwayat Detil Portofolio Anda*\n\n{portfolio_status}")
             
+            # Fitur tambahan untuk peringatan harga BTC
+            elif message_body == 'cek harga':
+                harga_btc = get_btc_price_from_binance()
+                target_prices = [2000000000, 2500000000, 3000000000, 3500000000, 4000000000, 
+                                 4500000000, 5000000000, 5500000000, 6000000000, 6500000000, 
+                                 7000000000, 7500000000, 8000000000, 8500000000, 9000000000, 
+                                 9500000000, 10000000000, 10500000000, 11000000000, 11500000000, 
+                                 12000000000, 12500000000, 13000000000, 13500000000, 14000000000, 
+                                 14500000000, 15000000000, 15500000000, 16000000000, 16500000000, 
+                                 17000000000, 17500000000, 18000000000, 18500000000, 19000000000, 
+                                 20000000000]
+                
+                # Periksa apakah harga BTC mencapai target
+                for target in target_prices:
+                    if harga_btc >= target:
+                        send_telegram_message(chat_id, f"🚨 Peringatan! Harga BTC mencapai target Rp {target:,}.\nSaat ini harga BTC: Rp {harga_btc:,.2f}")
+            
             else:
-                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', atau 'status'.")
+                send_telegram_message(chat_id, "Perintah tidak dikenali. Gunakan 'dca [jumlah]', 'grafik', 'status', atau 'cek harga'.")
 
     except Exception as e:
         print(f"Error memproses pesan. Laporan Eror Lengkap:")
