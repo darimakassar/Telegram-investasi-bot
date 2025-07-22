@@ -95,9 +95,10 @@ def get_portfolio_status():
             tanggal = row[0]
             modal_deposit = float(row[1])
             
-            # Penanganan kesalahan saat mengonversi 'Jumlah BTC Didapat' ke float
+            # Menangani konversi 'Jumlah BTC Didapat' yang menggunakan koma sebagai pemisah desimal
             try:
-                jumlah_btc_didapat = float(row[3].replace(',', '.'))  # Mengganti koma dengan titik jika ada
+                jumlah_btc_didapat = row[3].replace(',', '.')  # Mengganti koma dengan titik
+                jumlah_btc_didapat = float(jumlah_btc_didapat)
             except ValueError:
                 print(f"Error konversi nilai BTC: {row[3]}")
                 jumlah_btc_didapat = 0.0  # Set nilai ke 0 jika gagal konversi
