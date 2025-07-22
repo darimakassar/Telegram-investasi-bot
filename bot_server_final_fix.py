@@ -416,9 +416,9 @@ def webhook():
                 else:
                     threshold = 50  # Ubah sesuai kebutuhan
                     if vol > threshold:
-                        msg = f"🚨 Alert! Volatilitas BTC tinggi: {vol:.2f}% (30 hari annualized)"
+                        msg = f"🚨 Alert! Volatilitas BTC tinggi: {vol:.2f}% (30 hari annualized). Ini berisiko (negatif) untuk investor konservatif karena ketidakpastian harga, tapi menguntungkan (positif) bagi trader yang mencari peluang fluktuasi cepat."
                     else:
-                        msg = f"Volatilitas BTC: {vol:.2f}% (30 hari annualized)"
+                        msg = f"Volatilitas BTC: {vol:.2f}% (30 hari annualized). Volatilitas rendah ini relatif positif untuk stabilitas investasi jangka panjang, meski tetap ada risiko inheren di crypto."
                     send_telegram_message(chat_id, msg)
             
             else:
@@ -429,7 +429,7 @@ def webhook():
         traceback.print_exc()
 
     return Response(status=200)
-
+    
 # ==============================================================================
 # BAGIAN 5: MENJALANKAN SERVER
 # ==============================================================================
